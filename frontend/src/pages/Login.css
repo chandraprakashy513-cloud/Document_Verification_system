@@ -1,0 +1,173 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+.login-page{
+
+    min-height:100vh;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    background:linear-gradient(-45deg,#0f2027,#203a43,#2c5364,#00c6ff);
+
+    background-size:400% 400%;
+
+    animation:gradient 12s ease infinite;
+}
+
+@keyframes gradient{
+
+0%{
+background-position:0% 50%;
+}
+
+50%{
+background-position:100% 50%;
+}
+
+100%{
+background-position:0% 50%;
+}
+
+}
+
+.login-card{
+
+    width:430px;
+
+    padding:40px;
+
+    border-radius:25px;
+
+    background:rgba(255,255,255,.12);
+
+    backdrop-filter:blur(18px);
+
+    box-shadow:0 15px 40px rgba(0,0,0,.35);
+
+    transition:.4s;
+}
+
+.login-card:hover{
+
+    transform:translateY(-6px);
+
+    box-shadow:0 20px 50px rgba(0,0,0,.45);
+
+}
+
+.login-logo{
+
+    width:90px;
+
+    height:90px;
+
+    margin:auto;
+
+    border-radius:50%;
+
+    background:white;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-size:40px;
+
+    color:#0d6efd;
+
+    box-shadow:0 0 25px rgba(255,255,255,.5);
+
+    margin-bottom:20px;
+}
+
+.login-card h2{
+
+    color:white;
+
+    font-weight:700;
+}
+
+.login-card p{
+
+    color:#dcdcdc;
+}
+
+.input-group-text{
+
+    background:white;
+
+    border:none;
+
+    color:#0d6efd;
+
+    font-size:18px;
+}
+
+.form-control{
+
+    height:52px;
+
+    border:none;
+
+    font-size:16px;
+}
+
+.form-control:focus{
+
+    box-shadow:none;
+
+    border:2px solid #00e5ff;
+}
+
+.login-btn{
+
+    height:52px;
+
+    border:none;
+
+    border-radius:50px;
+
+    font-size:18px;
+
+    font-weight:600;
+
+    color:white;
+
+    background:linear-gradient(90deg,#0d6efd,#00b4db);
+
+    transition:.3s;
+}
+
+.login-btn:hover{
+
+    transform:scale(1.03);
+
+    background:linear-gradient(90deg,#005bea,#00c6fb);
+}
+
+.register-link{
+
+    margin-left:6px;
+
+    color:#fff;
+
+    font-weight:bold;
+
+    text-decoration:none;
+}
+
+.register-link:hover{
+
+    color:#00e5ff;
+
+    text-decoration:underline;
+}
