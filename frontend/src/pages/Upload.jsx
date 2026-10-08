@@ -2,7 +2,11 @@ import { useState } from "react";
 import API from "../services/api";
 import Navbar from "../components/Navbar";
 import Tesseract from "tesseract.js";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import "./Upload.css";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 function Upload() {
 
@@ -14,6 +18,48 @@ function Upload() {
   const [ocrText, setOcrText] = useState("");
 
 
+  const extractTextFromPDF = async (file) => {
+
+    const arrayBuffer = await file.arrayBuffer();
+
+    const pdf = await pdfjsLib.getDocument({
+      data: arrayBuffer
+    }).promise;
+
+    let fullText = "";
+
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+
+      const page = await pdf.getPage(pageNumber);
+
+      const viewport = page.getViewport({
+        scale: 2
+      });
+
+      const canvas = document.createElement("canvas");
+
+      const context = canvas.getContext("2d");
+
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+
+      await page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise;
+
+      const result = await Tesseract.recognize(
+        canvas,
+        "eng"
+      );
+
+      fullText += result.data.text + "\n";
+    }
+
+    return fullText;
+  };
+
+
   const handleUpload = async (e) => {
 
     e.preventDefault();
@@ -23,77 +69,121 @@ function Upload() {
       return;
     }
 
-    // OCR Start
-setChecking(true);
+    if (!documentName) {
+      alert("Please select document type.");
+      return;
+    }
 
-const result = await Tesseract.recognize(file, "eng");
-
-const extractedText = result.data.text.toLowerCase();
-
-setOcrText(extractedText);
-
-console.log("OCR Text:", extractedText);
-
-// Aadhaar Validation
-if (documentName === "Aadhar Card") {
-
-  const isAadhaar =
-    extractedText.includes("aadhaar") ||
-    extractedText.includes("government of india") ||
-    extractedText.includes("unique identification authority");
-
-  if (!isAadhaar) {
-    alert("❌ Please upload a valid Aadhaar Card.");
-    setChecking(false);
-    return;
-  }
-}
-
-// PAN Validation
-if (documentName === "PAN Card") {
-
-  const isPan =
-    extractedText.includes("income tax") ||
-    extractedText.includes("permanent account number");
-
-  if (!isPan) {
-    alert("❌ Please upload a valid PAN Card.");
-    setChecking(false);
-    return;
-  }
-}
-
-// OCR End
-
-
-    const formData = new FormData();
-
-
-    formData.append(
-      "documentName",
-      documentName === "Other" ? otherDocument : documentName
-    );
-
-
-    formData.append("document", file);
-
+    setChecking(true);
 
     try {
+
+      let extractedText = "";
+
+      // PDF OCR
+      if (file.type === "application/pdf") {
+
+        extractedText = (
+          await extractTextFromPDF(file)
+        ).toLowerCase();
+
+      }
+
+      // Image OCR
+      else {
+
+        const result = await Tesseract.recognize(
+          file,
+          "eng"
+        );
+
+        extractedText =
+          result.data.text.toLowerCase();
+      }
+
+
+      setOcrText(extractedText);
+
+      console.log("OCR Text:", extractedText);
+
+
+      // Aadhaar Validation
+      if (documentName === "Aadhar Card") {
+
+        const isAadhaar =
+          extractedText.includes("aadhaar") ||
+          extractedText.includes("government of india") ||
+          extractedText.includes(
+            "unique identification authority"
+          );
+
+        if (!isAadhaar) {
+
+          alert(
+            "❌ Please upload a valid Aadhaar Card."
+          );
+
+          setChecking(false);
+          return;
+        }
+      }
+
+
+      // PAN Validation
+      if (documentName === "PAN Card") {
+
+        const isPan =
+          extractedText.includes("income tax") ||
+          extractedText.includes(
+            "permanent account number"
+          );
+
+        if (!isPan) {
+
+          alert(
+            "❌ Please upload a valid PAN Card."
+          );
+
+          setChecking(false);
+          return;
+        }
+      }
+
+
+      // Form Data
+      const formData = new FormData();
+
+      formData.append(
+        "documentName",
+        documentName === "Other"
+          ? otherDocument
+          : documentName
+      );
+
+      formData.append(
+        "document",
+        file
+      );
+
 
       setLoading(true);
 
 
-      const token = localStorage.getItem("token");
+      // JWT Token
+      const token =
+        localStorage.getItem("token");
 
 
+      // Upload to Backend
       const res = await API.post(
         "/document/upload",
         formData,
         {
-          headers:{
-            Authorization:`Bearer ${token}`,
-            "Content-Type":"multipart/form-data",
-          },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type":
+              "multipart/form-data"
+          }
         }
       );
 
@@ -101,31 +191,44 @@ if (documentName === "PAN Card") {
       alert(res.data.message);
 
 
+      // Reset Form
       setDocumentName("");
       setOtherDocument("");
       setFile(null);
+      setOcrText("");
 
 
-      document.getElementById("fileInput").value="";
+      const fileInput =
+        document.getElementById("fileInput");
 
+      if (fileInput) {
+        fileInput.value = "";
+      }
 
-    } catch(error){
+    }
+
+    catch (error) {
+
+      console.error(
+        "Upload Error:",
+        error
+      );
 
       alert(
-        error.response?.data?.message || 
+        error.response?.data?.message ||
         "Upload Failed"
       );
 
     }
-    finally{
 
-  setLoading(false);
-  setChecking(false);
+    finally {
 
-}
+      setLoading(false);
+      setChecking(false);
+
+    }
 
   };
-
 
 
   return (
@@ -137,12 +240,10 @@ if (documentName === "PAN Card") {
 
       <div className="upload-page">
 
-
         <div className="upload-card">
 
 
           <div className="text-center mb-4">
-
 
             <div className="upload-logo">
 
@@ -160,9 +261,7 @@ if (documentName === "PAN Card") {
               Secure Document Verification System
             </p>
 
-
           </div>
-
 
 
           <form onSubmit={handleUpload}>
@@ -170,11 +269,9 @@ if (documentName === "PAN Card") {
 
             <div className="mb-3">
 
-
               <label className="form-label fw-bold text-white">
                 Select Document
               </label>
-
 
 
               <select
@@ -183,17 +280,17 @@ if (documentName === "PAN Card") {
 
                 value={documentName}
 
-                onChange={(e)=>setDocumentName(e.target.value)}
+                onChange={(e) =>
+                  setDocumentName(e.target.value)
+                }
 
                 required
 
               >
 
-
                 <option value="">
                   -- Select Document --
                 </option>
-
 
 
                 <optgroup label="Identity Documents">
@@ -221,83 +318,61 @@ if (documentName === "PAN Card") {
                 </optgroup>
 
 
-
-
                 <optgroup label="Educational Documents">
-
 
                   <option value="10th Marksheet">
                     10th Marksheet
                   </option>
 
-
                   <option value="12th Marksheet">
                     12th Marksheet
                   </option>
-
 
                   <option value="Graduation Marksheet">
                     Graduation Marksheet
                   </option>
 
-
                   <option value="Degree Certificate">
                     Degree Certificate
                   </option>
 
-
                 </optgroup>
 
 
-
-
-
                 <optgroup label="Government Certificates">
-
 
                   <option value="Income Certificate">
                     Income Certificate
                   </option>
 
-
                   <option value="Caste Certificate">
                     Caste Certificate
                   </option>
-
 
                   <option value="Domicile Certificate">
                     Domicile Certificate
                   </option>
 
-
                   <option value="Birth Certificate">
                     Birth Certificate
                   </option>
 
-
                 </optgroup>
-
 
 
                 <option value="Other">
                   Other
                 </option>
 
-
               </select>
 
-
             </div>
-
-
-
 
 
             {
               documentName === "Other" && (
 
                 <div className="mb-3">
-
 
                   <label className="form-label fw-bold text-white">
                     Enter Document Name
@@ -314,12 +389,13 @@ if (documentName === "PAN Card") {
 
                     value={otherDocument}
 
-                    onChange={(e)=>setOtherDocument(e.target.value)}
+                    onChange={(e) =>
+                      setOtherDocument(e.target.value)
+                    }
 
                     required
 
                   />
-
 
                 </div>
 
@@ -327,20 +403,11 @@ if (documentName === "PAN Card") {
             }
 
 
-
-
-
-
-
             <div className="mb-4">
 
-
               <label className="form-label fw-bold text-white">
-
                 Upload File
-
               </label>
-
 
 
               <input
@@ -353,27 +420,20 @@ if (documentName === "PAN Card") {
 
                 accept=".jpg,.jpeg,.png,.pdf"
 
-                onChange={(e)=>setFile(e.target.files[0])}
+                onChange={(e) =>
+                  setFile(e.target.files[0])
+                }
 
                 required
 
               />
 
 
-
               <small className="text-light">
-
                 JPG, PNG & PDF only
-
               </small>
 
-
             </div>
-
-
-
-
-
 
 
             <button
@@ -382,42 +442,48 @@ if (documentName === "PAN Card") {
 
               type="submit"
 
-              disabled={loading}
+              disabled={
+                loading || checking
+              }
 
             >
 
-
               {
-                loading ?
 
-                (
+                checking ? (
+
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2"></span>
+                    Checking Document...
+                  </>
+
+                )
+
+                : loading ? (
+
                   <>
                     <span className="spinner-border spinner-border-sm me-2"></span>
                     Uploading...
                   </>
+
                 )
 
-                :
+                : (
 
-                "Upload Document"
+                  "Upload Document"
+
+                )
 
               }
-
 
             </button>
 
 
-
           </form>
-
-
 
         </div>
 
-
-
       </div>
-
 
     </>
 
